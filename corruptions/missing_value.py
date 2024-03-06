@@ -1,10 +1,8 @@
 import numpy as np
 import pandas as pd
-from pyspark.sql.functions import rand, when, row_number, lit
-from pyspark.sql.window import Window
 
 
-class MissingValuePipeline:
+class MissingValue:
     def __init__(self, column, fraction, missing_method, na_value=np.nan):
         self.column = column
         self.fraction = fraction
