@@ -1,5 +1,3 @@
-test
 data/Amazon Product Reviews
 data/Librarything
-corruptions/test.ipynb
-.DS_Store
+test/test_data.ipynb
