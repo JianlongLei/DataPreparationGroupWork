@@ -2,3 +2,4 @@ test
 data/Amazon Product Reviews
 data/Librarything
 corruptions/test.ipynb
+.DS_Store
