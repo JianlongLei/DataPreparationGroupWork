@@ -3,14 +3,7 @@ import numpy as np
 from sklearn.preprocessing import OrdinalEncoder
 from timeit import default_timer as timer
 import logging
-import warnings
-
-logging.basicConfig(level=logging.DEBUG,
-                    filename='dataPreprocessing.log',  # log file
-                    filemode='a',  # append mode
-                    format='%(asctime)s - %(levelname)s - %(message)s') # log format
-logger = logging.getLogger()
-warnings.filterwarnings('ignore')
+logger = logging.getLogger('dataPreprocessing')
 
 
 # Function for encoding of categorical features in the data
@@ -48,11 +41,9 @@ def encode_categorical(df, categorical_columns):
 
 
 # Function for extracting of datetime values in the data
-def convert_datetime(X, datetime_columns):
+def convert_datetime(df, datetime_columns):
     logger.info('Started conversion of DATETIME columns...')
     start_time = timer()
-
-    df = X.copy()
 
     added_columns = []  # List to keep track of the names of newly added columns
     for col in datetime_columns:
@@ -99,5 +90,5 @@ def convert_datetime(X, datetime_columns):
 # Function for extracting features from text columns in the data
 def extract_text_features(df, text_columns):
     # To be implemented
-    pass
+    return df
 
