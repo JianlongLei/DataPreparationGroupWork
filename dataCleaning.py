@@ -9,14 +9,7 @@ from sklearn.pipeline import Pipeline
 from dataPreprocessing import convert_datetime
 from timeit import default_timer as timer
 import logging
-import warnings
-
-logging.basicConfig(level=logging.DEBUG,
-                    filename='dataCleaning.log',  # log file
-                    filemode='a',  # append mode
-                    format='%(asctime)s - %(levelname)s - %(message)s') # log format
-logger = logging.getLogger()
-warnings.filterwarnings('ignore')
+logger = logging.getLogger('dataCleaning')
 
 
 def handle_duplicates(df):
@@ -65,14 +58,14 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
             df[col].interpolate(method='linear', inplace=True)  # Fill missing values using linear interpolation
             logger.info(f'Imputed missing values for column: {col}')
 
-    df_modified, added_columns = convert_datetime(df, datetime_columns)
+    df, added_columns = convert_datetime(df, datetime_columns)
 
     # Loop through numerical and categorical columns to handle missing values
     for col in (numerical_columns + categorical_columns):
         if df[col].isnull().any():
             logger.info(f'Processing missing values for column: {col}')
 
-            X = df_modified.copy()  # Create a copy of the DataFrame to avoid modifying the original
+            X = df.copy()  # Create a copy of the DataFrame to avoid modifying the original
             y = X.pop(col)
             X_train = X[y.notnull()]
             y_train = y[y.notnull()]
@@ -148,6 +141,8 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
             df.loc[y.isnull(), col] = predicted_values  # Impute the predicted values into the original DataFrame
 
             logger.info(f'Imputed missing values for column: {col}')
+
+    df.drop(added_columns, axis=1, inplace=True)  # Drop the added columns
 
     end_time = timer()
     logger.info(f'Handling of missing values completed in {end_time - start_time:.5f} seconds')
