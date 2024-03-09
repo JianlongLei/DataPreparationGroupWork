@@ -1,15 +1,18 @@
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
-from xgboost import XGBRegressor
 # from dataIntegration import select_the_dataset
 from dataCleaning import *
-# from dataPreprocessing import *
+from dataPreprocessing import *
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import GridSearchCV
+from xgboost import XGBRegressor, XGBClassifier
+import logging
+import warnings
 import json
+
+logging.basicConfig(level=logging.DEBUG,
+                    filename='Data_Cleaning_and_Preprocessing.log',  # log file
+                    filemode='w',  # write mode
+                    format='%(asctime)s - %(levelname)s - %(message)s')  # log format
+warnings.filterwarnings('ignore')
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -96,24 +99,29 @@ print("Data after classifying columns:\n", X.tail(10), "\n")
 
 
 # Randomly insert duplicates
-def insert_duplicates(df, num_duplicates=1000):
-    # Ensure the number of duplicates to insert does not exceed the length of the original DataFrame
-    num_duplicates = min(num_duplicates, len(df))
+def insert_duplicates(df):
+    # Add a column to preserve the original order of the dataframe
+    df['original_order'] = range(len(df))
 
-    # Randomly select num_duplicates records from df to duplicate
-    duplicates = df.sample(n=num_duplicates)
+    num_duplicates = np.random.randint(1, 10001)
+    num_duplicates = min(num_duplicates, len(df))  # Ensure the number of duplicates does not exceed the original size
+    duplicates = df.sample(n=num_duplicates)  # Randomly select records to duplicate
 
-    # Create a new DataFrame that includes both the original data and the duplicates
+    # Assign new 'original_order' positions for duplicates to insert them at random positions
+    duplicates['original_order'] = np.random.choice(df['original_order'], size=num_duplicates, replace=False)
+
     df_modified = pd.concat([df, duplicates])
 
-    # Shuffle the rows of the new DataFrame to distribute duplicates randomly
-    df_modified = df_modified.sample(frac=1).reset_index(drop=True)
+    # Sort the modified dataframe by 'original_order' to mix in the duplicates at their new positions
+    df_modified = df_modified.sort_values(by='original_order').reset_index(drop=True)
+    df_modified.drop(columns=['original_order'], inplace=True)  # Drop the 'original_order' column
+    df.drop(columns=['original_order'], inplace=True)  # Drop the 'original_order' column from the original DataFrame
 
     return df_modified
 
 
 # Randomly introduce missing values
-def introduce_nan(df, numerical_columns, categorical_columns, datetime_columns, text_columns, missing_ratio=0.1):
+def introduce_nan(df, numerical_columns, categorical_columns, datetime_columns, text_columns, missing_ratio=0.02):
     df_modified = df.copy()  # Create a copy of the DataFrame to modify
 
     # Randomly select one column from each type of columns
@@ -142,10 +150,11 @@ def introduce_nan(df, numerical_columns, categorical_columns, datetime_columns, 
 
 
 # Randomly introduce outliers
-def introduce_outliers(df, numerical_columns, num_outliers=1000):
+def introduce_outliers(df, numerical_columns):
     df_modified = df.copy()
 
     # Ensure the number of outliers to introduce does not exceed one-tenth of the original DataFrame
+    num_outliers = np.random.randint(1, 10001)
     num_outliers = min(num_outliers, len(df_modified)//10)
 
     for col in numerical_columns:
@@ -174,6 +183,7 @@ def introduce_outliers(df, numerical_columns, num_outliers=1000):
     return df_modified
 
 
+# Data corruption
 X_random_nans = introduce_nan(X, numerical_columns, categorical_columns, datetime_columns, text_columns)
 print("Data with random missing values:\n", X_random_nans.tail(10), "\n")
 X_random_outliers = introduce_outliers(X_random_nans, numerical_columns)
@@ -181,16 +191,65 @@ print("Data with random outliers:\n", X_random_outliers.tail(10), "\n")
 X_random_duplicates = insert_duplicates(X_random_outliers)
 print("Data with random duplicates:\n", X_random_duplicates.tail(10), "\n")
 
+
+# Data cleaning
 X_random_duplicates = X_random_duplicates.dropna(how='all').reset_index(drop=True)
 
 X_distinct = handle_duplicates(X_random_duplicates)
 print("Data after handling duplicates:\n", X_distinct.tail(10), "\n")
 X_without_outliers = handle_outliers(X_distinct, numerical_columns)
 print("Data after handling outliers:\n", X_without_outliers.tail(10), "\n")
-X_imputed = handle_missing_values(
+X_cleaned = handle_missing_values(
     X_without_outliers, numerical_columns, categorical_columns, datetime_columns, short_text_columns, long_text_columns
 )
-print("Data after imputation:\n", X_imputed.tail(10), "\n")
+print("Data after imputation:\n", X_cleaned.tail(10), "\n")
+
+
+# Data preprocessing after cleaning
+X_cleaned = encode_categorical(X_cleaned, categorical_columns)
+X_cleaned, _ = convert_datetime(X_cleaned, datetime_columns)
+X_cleaned = extract_text_features(X_cleaned, text_columns)
+print("Data after preprocessing:\n", X_cleaned.tail(10), "\n")
+
+
+# Model training and evaluation
+selected_col = np.random.choice(categorical_columns) if categorical_columns else None
+if selected_col is not None:
+    print("Selected column for classification: ", selected_col, "\n")
+    X_train = X_cleaned.drop(columns=[selected_col]+categorical_columns+datetime_columns+text_columns)
+    y_train = X_cleaned[selected_col]
+
+    # Fit and transform y to have consecutive class labels
+    le = LabelEncoder()
+    y_train = le.fit_transform(y_train)
+
+    xgb = XGBClassifier()
+
+    # Define a grid of hyperparameter values for tuning the classifier
+    param_grid = {
+        'max_depth': [6],
+        'learning_rate': [0.01, 0.1],
+        'n_estimators': [1000, 3000],
+        'colsample_bytree': [0.7],
+        'subsample': [0.7],
+        'reg_alpha': [0.5, 1.0],
+        'reg_lambda': [0.5, 1.0],
+        'num_parallel_tree': [1],
+    }
+
+    # Set up GridSearchCV to find the best model parameters using 5-fold cross-validation
+    grid_search = GridSearchCV(xgb, param_grid, cv=5, scoring='accuracy')
+
+    grid_search.fit(X_train, y_train)
+
+    # Extract the best model
+    best_model = grid_search.best_estimator_  # the best estimator (the trained model with the best parameters)
+    # Access the best parameters and the best score after fitting
+    print("Best parameters found: ", grid_search.best_params_)
+    print("Best accuracy found: ", grid_search.best_score_)
+    print("Average accuracy: ", grid_search.cv_results_['mean_test_score'].mean())
+
+
 
 
 
