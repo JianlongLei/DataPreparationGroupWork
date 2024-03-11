@@ -1,12 +1,11 @@
 import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn.preprocessing import StandardScaler, OrdinalEncoder, LabelEncoder, FunctionTransformer
+from sklearn.preprocessing import OrdinalEncoder, LabelEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.pipeline import Pipeline
-from dataPreprocessing import convert_datetime
 from timeit import default_timer as timer
 import logging
 logger = logging.getLogger('dataCleaning')
@@ -48,29 +47,17 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
             df[col] = df[col].fillna('')
             logger.info(f'Imputed missing values for column: {col}')
 
+    # Convert datetime columns to Unix timestamps
     for col in datetime_columns:
-        if df[col].isnull().any():
-            logger.info(f'Processing missing values for column: {col}')
-            if df[col].dtype in ['int64', 'float64']:
-                df[col] = pd.to_datetime(df[col], unit='s', errors='coerce')
-            else:
-                df[col] = pd.to_datetime(df[col], infer_datetime_format=True, errors='coerce')
+        if df[col].dtype in ['int64', 'float64']:
+            df[col] = pd.to_datetime(df[col], unit='s', errors='coerce')
+        else:
+            df[col] = pd.to_datetime(df[col], infer_datetime_format=True, errors='coerce')
 
-            # df[col].interpolate(method='linear', inplace=True)  # Fill missing values using linear interpolation
+        df[col] = [int(dt.timestamp()) if pd.notnull(dt) else np.nan for dt in df[col]]
 
-            timestamps = df[col].dropna().astype(np.int64) // 10 ** 9  # Convert datetime to timestamp
-            median_timestamp = timestamps.median()  # Calculate the median datetime
-            median_datetime = pd.to_datetime(median_timestamp, unit='s')  # Convert the median timestamp back to datetime
-            df[col].fillna(median_datetime, inplace=True)  # Fill missing values with the median datetime
-
-            logger.info(f'Imputed missing values for column: {col}')
-
-    datetime_features_df = convert_datetime(df, datetime_columns)
-    datetime_features = datetime_features_df.columns.tolist()
-    df = df.join(datetime_features_df)
-
-    # Loop through numerical and categorical columns to handle missing values
-    for col in (numerical_columns + categorical_columns):
+    # Loop through numerical, categorical and datetime columns to handle missing values
+    for col in (numerical_columns + categorical_columns + datetime_columns):
         if df[col].isnull().any():
             logger.info(f'Processing missing values for column: {col}')
 
@@ -82,76 +69,51 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
 
             transformers = []  # Initialize a list to store transformers
 
-            # Define a transformer for numerical features (imputation and scaling)
-            numerical_transformer = Pipeline(steps=[
-                ('imputer', KNNImputer(n_neighbors=3)),
-                ('scaler', StandardScaler())
-            ])
-
-            # Define a transformer for categorical features (imputation and encoding)
+            # Define a transformer for categorical features
             categorical_transformer = Pipeline(steps=[
                 ('imputer', SimpleImputer(strategy='most_frequent')),
                 ('ordinal', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1))
             ])
 
-            # Define a function to convert numpy ndarray to a flat list of strings
-            def to_flat_list(ndarray):
-                return ndarray.flatten().astype(str).tolist()
-
-            # Transformer to convert ndarray to a flat list for text processing
-            ndarray_to_list_transformer = FunctionTransformer(to_flat_list, validate=False)
-
-            # Define transformers for text features (imputation and vectorization)
-            short_text_transformer = Pipeline(steps=[
-                ('imputer', SimpleImputer(strategy='constant', fill_value='')),
-                ('ndarray_to_list', ndarray_to_list_transformer),
-                ('vectorizer', TfidfVectorizer(max_features=500))
-            ])
-
-            long_text_transformer = Pipeline(steps=[
-                ('imputer', SimpleImputer(strategy='constant', fill_value='')),
-                ('ndarray_to_list', ndarray_to_list_transformer),
-                ('vectorizer', TfidfVectorizer(max_features=1000))
-            ])
-
             # Append transformers for different types of features, excluding the current target column
-            transformers.append(('num', numerical_transformer, [c for c in numerical_columns if c != col] + datetime_features))
+            transformers.append(('num', KNNImputer(n_neighbors=3), [c for c in (numerical_columns + datetime_columns) if c != col]))
             transformers.append(('categ', categorical_transformer, [c for c in categorical_columns if c != col]))
             # Add a separate transformer for each text column
             for c in short_text_columns:
-                transformers.append((f'text_{c}', short_text_transformer, [c]))
+                transformers.append((f'text_{c}', TfidfVectorizer(max_features=500), c))
             for c in long_text_columns:
-                transformers.append((f'text_{c}', long_text_transformer, [c]))
+                transformers.append((f'text_{c}', TfidfVectorizer(max_features=1000), c))
 
             # ColumnTransformer to apply the appropriate transformations to each column type
             feature_transformer = ColumnTransformer(transformers=transformers, remainder="drop")
 
-            # Use predictive modeling for numerical and categorical columns
-            if col in numerical_columns:
+            # Use predictive modeling for numerical, categorical and datetime columns
+            if col in (numerical_columns + datetime_columns):
                 pipeline = Pipeline(steps=[
                     ('features', feature_transformer),
                     ('learner', RandomForestRegressor())
                 ])
                 final_model = pipeline.fit(X_train, y_train)  # Fit the pipeline to the training data
                 predicted_values = final_model.predict(X_test)  # Predict missing values for numerical columns
+                df.loc[y.isnull(), col] = predicted_values  # Impute the predicted values into the original DataFrame
+
+                if col in datetime_columns:
+                    df[col] = pd.to_datetime(df[col], unit='s')
+
             else:
-                label_encoder = LabelEncoder()  # Encode labels for categorical target
-                encoded_y = label_encoder.fit_transform(y_train)
+                le = LabelEncoder()  # Encode labels for categorical target
+                encoded_y = le.fit_transform(y_train)
 
                 pipeline = Pipeline(steps=[
                     ('features', feature_transformer),
                     ('learner', RandomForestClassifier())
                 ])
-                # Fit the pipeline to the training data
                 final_model = pipeline.fit(X_train, encoded_y)
-                encoded_predictions = final_model.predict(X_test)
-                predicted_values = label_encoder.inverse_transform(encoded_predictions)  # Decode the predictions
-
-            df.loc[y.isnull(), col] = predicted_values  # Impute the predicted values into the original DataFrame
+                predicted_values = final_model.predict(X_test)
+                predicted_values = le.inverse_transform(predicted_values)  # Decode the predictions
+                df.loc[y.isnull(), col] = predicted_values
 
             logger.info(f'Imputed missing values for column: {col}')
-
-    df.drop(datetime_features, axis=1, inplace=True)  # Drop the added columns
 
     end_time = timer()
     logger.info(f'Handling of missing values completed in {end_time - start_time:.5f} seconds')
