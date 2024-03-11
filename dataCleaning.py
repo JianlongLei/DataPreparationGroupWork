@@ -55,10 +55,19 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
                 df[col] = pd.to_datetime(df[col], unit='s', errors='coerce')
             else:
                 df[col] = pd.to_datetime(df[col], infer_datetime_format=True, errors='coerce')
-            df[col].interpolate(method='linear', inplace=True)  # Fill missing values using linear interpolation
+
+            # df[col].interpolate(method='linear', inplace=True)  # Fill missing values using linear interpolation
+
+            timestamps = df[col].dropna().astype(np.int64) // 10 ** 9  # Convert datetime to timestamp
+            median_timestamp = timestamps.median()  # Calculate the median datetime
+            median_datetime = pd.to_datetime(median_timestamp, unit='s')  # Convert the median timestamp back to datetime
+            df[col].fillna(median_datetime, inplace=True)  # Fill missing values with the median datetime
+
             logger.info(f'Imputed missing values for column: {col}')
 
-    df, added_columns = convert_datetime(df, datetime_columns)
+    datetime_features_df = convert_datetime(df, datetime_columns)
+    datetime_features = datetime_features_df.columns.tolist()
+    df = df.join(datetime_features_df)
 
     # Loop through numerical and categorical columns to handle missing values
     for col in (numerical_columns + categorical_columns):
@@ -106,7 +115,7 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
             ])
 
             # Append transformers for different types of features, excluding the current target column
-            transformers.append(('num', numerical_transformer, [c for c in numerical_columns if c != col] + added_columns))
+            transformers.append(('num', numerical_transformer, [c for c in numerical_columns if c != col] + datetime_features))
             transformers.append(('categ', categorical_transformer, [c for c in categorical_columns if c != col]))
             # Add a separate transformer for each text column
             for c in short_text_columns:
@@ -142,7 +151,7 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
 
             logger.info(f'Imputed missing values for column: {col}')
 
-    df.drop(added_columns, axis=1, inplace=True)  # Drop the added columns
+    df.drop(datetime_features, axis=1, inplace=True)  # Drop the added columns
 
     end_time = timer()
     logger.info(f'Handling of missing values completed in {end_time - start_time:.5f} seconds')
