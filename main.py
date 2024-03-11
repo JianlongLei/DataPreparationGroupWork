@@ -1,9 +1,8 @@
-# from dataIntegration import select_the_dataset
 from dataCleaning import *
 from dataPreprocessing import *
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
-from xgboost import XGBRegressor, XGBClassifier
+from xgboost import XGBClassifier
 import logging
 import warnings
 import json
@@ -185,11 +184,9 @@ def introduce_outliers(df, numerical_columns):
 
 # Data corruption
 X_random_nans = introduce_nan(X, numerical_columns, categorical_columns, datetime_columns, text_columns)
-print("Data with random missing values:\n", X_random_nans.tail(10), "\n")
 X_random_outliers = introduce_outliers(X_random_nans, numerical_columns)
-print("Data with random outliers:\n", X_random_outliers.tail(10), "\n")
 X_random_duplicates = insert_duplicates(X_random_outliers)
-print("Data with random duplicates:\n", X_random_duplicates.tail(10), "\n")
+print("Corrupted data:\n", X_random_duplicates.tail(10), "\n")
 
 
 # Data cleaning
@@ -199,25 +196,38 @@ X_distinct = handle_duplicates(X_random_duplicates)
 print("Data after handling duplicates:\n", X_distinct.tail(10), "\n")
 X_without_outliers = handle_outliers(X_distinct, numerical_columns)
 print("Data after handling outliers:\n", X_without_outliers.tail(10), "\n")
-X_cleaned = handle_missing_values(
-    X_without_outliers, numerical_columns, categorical_columns, datetime_columns, short_text_columns, long_text_columns
-)
-print("Data after imputation:\n", X_cleaned.tail(10), "\n")
+X_cleaned = handle_missing_values(X_without_outliers, numerical_columns, categorical_columns, datetime_columns,
+                                  short_text_columns, long_text_columns)
+print("Data after cleaning:\n", X_cleaned.tail(10), "\n")
 
 
 # Data preprocessing after cleaning
-X_cleaned = encode_categorical(X_cleaned, categorical_columns)
-X_cleaned, _ = convert_datetime(X_cleaned, datetime_columns)
-X_cleaned = extract_text_features(X_cleaned, text_columns)
-print("Data after preprocessing:\n", X_cleaned.tail(10), "\n")
+categorical_features_df = encode_categorical(X_cleaned, categorical_columns)
+print("Categorical features encoded:\n", categorical_features_df.tail(10), "\n")
+datetime_features_df = convert_datetime(X_cleaned, datetime_columns)
+print("DateTime features extracted:\n", datetime_features_df.tail(10), "\n")
+text_features_df = extract_text_features(X_cleaned, text_columns)
+print("Text features extracted:\n", text_features_df.tail(10), "\n")
+
+# Concatenate all DataFrames horizontally (axis=1) to form a complete feature set
+modeling_df = pd.concat([X_cleaned[numerical_columns], categorical_features_df,
+                         datetime_features_df, text_features_df], axis=1)
+print("Data used for modeling:\n", modeling_df.tail(10), "\n")
 
 
 # Model training and evaluation
+logger.info('Started model training and evaluation...')
+start_time = timer()
+
 selected_col = np.random.choice(categorical_columns) if categorical_columns else None
 if selected_col is not None:
     print("Selected column for classification: ", selected_col, "\n")
-    X_train = X_cleaned.drop(columns=[selected_col]+categorical_columns+datetime_columns+text_columns)
-    y_train = X_cleaned[selected_col]
+
+    # Identify columns in modeling_df that start with "selected_col_"
+    cols_to_drop = [col for col in modeling_df.columns if col.startswith(f'{selected_col}_')]
+
+    X_train = modeling_df.drop(columns=cols_to_drop)  # Drop these columns from modeling_df
+    y_train = X_cleaned[selected_col]  # Set y_train to the column from X_cleaned corresponding to selected_col
 
     # Fit and transform y to have consecutive class labels
     le = LabelEncoder()
@@ -227,14 +237,15 @@ if selected_col is not None:
 
     # Define a grid of hyperparameter values for tuning the classifier
     param_grid = {
-        'max_depth': [6],
-        'learning_rate': [0.01, 0.1],
-        'n_estimators': [1000, 3000],
-        'colsample_bytree': [0.7],
-        'subsample': [0.7],
-        'reg_alpha': [0.5, 1.0],
-        'reg_lambda': [0.5, 1.0],
-        'num_parallel_tree': [1],
+        'max_depth': [6],  # [2, 4, 6, 8, 10]
+        'learning_rate': [0.01],  # [0.0001, 0.001, 0.01, 0.1]
+        'n_estimators': [1000],  # [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
+        'min_child_weight': [1],  # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        'colsample_bytree': [0.7],  # [0.2, 0.4, 0.6, 0.8, 1.0]
+        'subsample': [0.7],  # [0.2, 0.4, 0.6, 0.8, 1.0]
+        'reg_alpha': [0.5],  # [0.0, 0.5, 1.0, 5.0, 10.0]
+        'reg_lambda': [1.0],  # [0.0, 0.5, 1.0, 5.0, 10.0]
+        'num_parallel_tree': [1],  # [1, 2, 3, 4, 5]
     }
 
     # Set up GridSearchCV to find the best model parameters using 5-fold cross-validation
@@ -244,10 +255,15 @@ if selected_col is not None:
 
     # Extract the best model
     best_model = grid_search.best_estimator_  # the best estimator (the trained model with the best parameters)
+    logger.info(f'Final model:\n {best_model}')
+
     # Access the best parameters and the best score after fitting
     print("Best parameters found: ", grid_search.best_params_)
     print("Best accuracy found: ", grid_search.best_score_)
     print("Average accuracy: ", grid_search.cv_results_['mean_test_score'].mean())
+
+end_time = timer()
+logger.info(f'Model training and evaluation completed in {end_time - start_time:.5f} seconds')
 
 
 
