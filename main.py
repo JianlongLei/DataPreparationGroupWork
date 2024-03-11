@@ -2,6 +2,7 @@ from dataCleaning import *
 from dataPreprocessing import *
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 import logging
 import warnings
@@ -218,7 +219,6 @@ print("Data used for modeling:\n", modeling_df.tail(10), "\n")
 # Model training and evaluation
 logger.info('Started model training and evaluation...')
 start_time = timer()
-
 selected_col = np.random.choice(categorical_columns) if categorical_columns else None
 if selected_col is not None:
     print("Selected column for classification: ", selected_col, "\n")
@@ -233,23 +233,36 @@ if selected_col is not None:
     le = LabelEncoder()
     y_train = le.fit_transform(y_train)
 
-    xgb = XGBClassifier()
+    # xgb = XGBClassifier()
+    #
+    # # Define a grid of hyperparameter values for tuning the classifier
+    # param_grid = {
+    #     'max_depth': [6],  # [2, 4, 6, 8, 10]
+    #     'learning_rate': [0.01],  # [0.0001, 0.001, 0.01, 0.1]
+    #     'n_estimators': [1000],  # [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
+    #     'min_child_weight': [1],  # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    #     'colsample_bytree': [0.7],  # [0.2, 0.4, 0.6, 0.8, 1.0]
+    #     'subsample': [0.7],  # [0.2, 0.4, 0.6, 0.8, 1.0]
+    #     'reg_alpha': [0.5],  # [0.0, 0.5, 1.0, 5.0, 10.0]
+    #     'reg_lambda': [1.0],  # [0.0, 0.5, 1.0, 5.0, 10.0]
+    #     'num_parallel_tree': [1],  # [1, 2, 3, 4, 5]
+    # }
+
+    clf = RandomForestClassifier()
 
     # Define a grid of hyperparameter values for tuning the classifier
     param_grid = {
-        'max_depth': [6],  # [2, 4, 6, 8, 10]
-        'learning_rate': [0.01],  # [0.0001, 0.001, 0.01, 0.1]
-        'n_estimators': [1000],  # [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
-        'min_child_weight': [1],  # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        'colsample_bytree': [0.7],  # [0.2, 0.4, 0.6, 0.8, 1.0]
-        'subsample': [0.7],  # [0.2, 0.4, 0.6, 0.8, 1.0]
-        'reg_alpha': [0.5],  # [0.0, 0.5, 1.0, 5.0, 10.0]
-        'reg_lambda': [1.0],  # [0.0, 0.5, 1.0, 5.0, 10.0]
-        'num_parallel_tree': [1],  # [1, 2, 3, 4, 5]
+        'n_estimators': [200],  # [100, 200, 300, 400, 500]
+        'max_depth': [None],  # [None, 10, 20, 30, 40, 50]
+        'min_samples_split': [2],  # [2, 5, 10]
+        'min_samples_leaf': [1],  # [1, 2, 4]
+        'max_features': ['sqrt'],  # ['auto', 'sqrt', 'log2']
+        'bootstrap': [True],  # [True, False]
+        'criterion': ['gini'],  # ['gini', 'entropy']
     }
 
     # Set up GridSearchCV to find the best model parameters using 5-fold cross-validation
-    grid_search = GridSearchCV(xgb, param_grid, cv=5, scoring='accuracy')
+    grid_search = GridSearchCV(clf, param_grid, cv=5, scoring='accuracy')
 
     grid_search.fit(X_train, y_train)
 
