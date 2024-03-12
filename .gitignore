@@ -2,3 +2,4 @@ data/Amazon Product Reviews
 data/Librarything
 test/test_data.ipynb
 .idea
+__pycache__
