@@ -49,7 +49,7 @@ def classify_column_types(df):
         if not converted_sample.isna().any():
             if sample_data.dtype in ['int64', 'float64']:
                 # For numeric columns, check if values are in the typical Unix timestamp range
-                if sample_data.between(1e9, 2e9).any():
+                if sample_data.between(1e9, 2e9).any() and "time" in col.lower():
                     datetime_columns.append(col)
                     continue  # Skip further checks for this column
             else:
