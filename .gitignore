@@ -3,3 +3,6 @@ data/Librarything
 test/test_data.ipynb
 .idea
 __pycache__
+data/.DS_Store
+.DS_Store
+main_steps/test.ipynb

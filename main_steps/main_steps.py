@@ -1,5 +1,8 @@
 # from main_steps.data_clean import DataClean
 # from main_steps.data_corruption import DataCorruption
+import sys
+sys.path.append('/Users/tangzj/Desktop/DataPreparationGroupWork')
+
 from data_loader import DataLoader
 from data_prepare import DataPrepare
 from data_corruption import MissingCorruption, MissingCorruptionData, ReplaceCharacterCorruption, \
@@ -15,14 +18,16 @@ def train_and_evaluate(data):
     # prepare data, like mark data type, training data columns
     # and target labels
     data_prepare = DataPrepare(data)
+    # data_prepare.classify_column_types()
     data_prepare.set_columns(
         categorical_columns=['verified'],
         numerical_columns=[],
         text_columns=['reviewText', 'summary'],
         target_columns=['overall']
     )
+    # data_prepare.set_target(target_columns=['overall'])
 
-    train_data, test_data, train_labels, test_labels = data_prepare.get_training_data(0.5, 1234)
+    train_data, test_data, train_labels, test_labels = data_prepare.get_training_data(0.3, 1234)
 
     # get a model pipline from the training data
     model_preparation = RandomForestModelPrepare(
@@ -49,15 +54,20 @@ def train_and_evaluate(data):
     # #
     evaluation = AccuracyEvaluator(model)
     result = evaluation.evaluate(test_data, test_labels)
-    print(result)
+    print(f"- Accuracy: {result:.4f}\n")
 
 
 if __name__ == '__main__':
     # load data from a path
     loader = DataLoader('../data/Amazon Product Reviews/test_1000.csv')
+    # loader = DataLoader('../data/Amazon Product Reviews/test.csv')
     data = loader.get_data()
-    print(data.columns)
+    
+    columns_str = ', '.join(data.columns) 
+    print(f"The DataFrame contains the following columns:\n{columns_str}.")
+    print("Original data:\n", data.tail(5), "\n")
 
+    print("====================Before corruption=====================")
     train_and_evaluate(data)
     # do corruptions
     # corruptions = []
@@ -73,7 +83,8 @@ if __name__ == '__main__':
     #     fraction=0.2,
     #     rate=0.3
     # ))
-
+    
+    print("====================After corruption=====================")
     data = missing.do_corrupt()
     train_and_evaluate(data)
 

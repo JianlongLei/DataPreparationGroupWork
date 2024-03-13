@@ -22,7 +22,13 @@ class MissingValue:
     def _apply_mcar(self, df):
         # MCAR: Assuming missingness completely at random
         missing_indices = np.random.choice(df.index, size=int(len(df) * self.fraction), replace=False)
-        df.loc[missing_indices, self.column] = self.na_value
+        # df.loc[missing_indices, self.column] = self.na_value
+
+        if df[self.column].dtype == 'bool':
+            # For boolean columns, use None to represent missing values
+            df.loc[missing_indices, self.column] = None
+        else:
+            df.loc[missing_indices, self.column] = np.nan
 
     def _apply_mar(self, df):
         # MAR: Assuming missingness depends on another column
