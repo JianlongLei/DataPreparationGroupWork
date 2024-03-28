@@ -272,7 +272,7 @@ if selected_col is not None:
     grid_search.fit(X_train, y_train)
 
     # Extract the best model
-    best_model = grid_search.best_estimator_  # the best estimator (the trained model with the best parameters)
+    best_model = grid_search.best_estimator_
 
     y_pred = best_model.predict(X_test)  # Predict on the test data
     y_pred = le.inverse_transform(y_pred)  # Decode the predictions
@@ -280,7 +280,7 @@ if selected_col is not None:
     # Calculate the accuracy
     accuracy = accuracy_score(y_test, y_pred)
 
-    # Access the best parameters and the best score after fitting
+    # Print out the results
     print("Test data accuracy: ", accuracy)
     logger.info(f'Final model:\n {best_model}')
     print("Best parameters found: ", grid_search.best_params_)
