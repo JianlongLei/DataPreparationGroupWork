@@ -2,23 +2,29 @@ from abc import abstractmethod
 from random import random
 
 import numpy as np
+import pandas as pd
+
 # import sys
 # sys.path.append('/Users/tangzj/Desktop/DataPreparationGroupWork')
 
 from corruptions.missing_value import MissingValue
 from corruptions.replace_character import ReplaceCharacter
+from dataCorruption import insert_duplicates, introduce_nan, introduce_outliers
 
 
 class CorruptionData:
-    def __init__(self, column, fraction):
+    def __init__(self, column = None, fraction = 0):
         self.column = column
         self.fraction = fraction
 
 
 class DataCorruption:
-    def __init__(self, data, howto):
+    def __init__(self, data = None, howto = None):
         self.data = data
         self.howto = howto
+
+    def setData(self, data):
+        self.data = data
 
     def get_dtype(self, df):
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
@@ -79,16 +85,16 @@ class MissingCorruption(DataCorruption):
         return self.data
 
 
-
 class ReplaceCharactorCorruptionData(CorruptionData):
 
     def __init__(self, column, fraction, rate):
         super().__init__(column, fraction)
         self.rate = rate
 
+
 class ReplaceCharacterCorruption(DataCorruption):
 
-    def __init__(self, data, howto : ReplaceCharactorCorruptionData):
+    def __init__(self, data, howto: ReplaceCharactorCorruptionData):
         super().__init__(data, howto)
 
     def do_corrupt(self):
@@ -101,18 +107,30 @@ class ReplaceCharacterCorruption(DataCorruption):
         df_transformed = pipeline.transform(self.data)
         return df_transformed
 
-# class GaussianNoise(DataCorruption):
-#
-#     def do_corrupt(self):
-#         data = self.data
-#         column = self.howto.column
-#         df = data.copy(deep=True)
-#         stddev = np.std(df[columns])
-#         scale = random.uniform(1, 5)
-#
-#         if self.fraction > 0:
-#             rows = self.sample_rows(data)
-#             noise = np.random.normal(0, scale * stddev, size=len(rows))
-#             df.loc[rows, column] += noise
-#
-#         return df
+
+class DuplicateCorruption(DataCorruption):
+
+    def do_corrupt(self):
+        return insert_duplicates(self.data)
+
+
+class IntroNanCorruption(DataCorruption):
+
+    def do_corrupt(self):
+        numerical_columns = self.howto.column[0]
+        categorical_columns = self.howto.column[1]
+        datetime_columns = self.howto.column[2]
+        text_columns = self.howto.column[3]
+        missing_ratio = self.howto.fraction
+        return introduce_nan(
+            self.data, numerical_columns,
+            categorical_columns, datetime_columns,
+            text_columns, missing_ratio)
+
+
+class IntroOutliersCorruption(DataCorruption):
+
+    def do_corrupt(self):
+        return introduce_outliers(
+            self.data,
+            self.howto.column)

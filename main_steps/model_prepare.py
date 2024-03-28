@@ -69,7 +69,8 @@ class ModelPrepare:
         # refit = list(scorer.keys())[0]
 
         search = GridSearchCV(pipeline, param_grid, cv=5)
-        model = search.fit(self.train_data, self.train_labels).best_estimator_
+        train_features = self.train_data[self.numerical_columns + self.categorical_columns + self.text_columns]
+        model = search.fit(train_features, self.train_labels).best_estimator_
 
         return model
 
@@ -78,8 +79,10 @@ class RandomForestModelPrepare(ModelPrepare):
 
     def get_params(self, transformers: ColumnTransformer):
         param_grid = {
-            'classifier__n_estimators': [100, 150, 200],
-            'classifier__max_depth': [10, 20, 30],
+            # 'classifier__n_estimators': [100, 150, 200],
+            # 'classifier__max_depth': [10, 20, 30],
+            'classifier__n_estimators': [50],
+            'classifier__max_depth': [10],
         }
 
         pipeline = Pipeline(

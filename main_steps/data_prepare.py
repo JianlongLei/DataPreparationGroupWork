@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 
 class DataPrepare:
-    def __init__(self, data):
+    def __init__(self, data, target_columns = []):
         self.data = data
-        self.target_columns = []
+        self.target_columns = target_columns
         self.text_columns = []
         self.categorical_columns = []
         self.numerical_columns = []
         self.datetime_columns = []
-        
+
         self.classify_column_types() # Automatically classify column types upon initialization
 
     def set_columns(
@@ -27,18 +27,20 @@ class DataPrepare:
         self.text_columns = text_columns
         self.target_columns = target_columns
         self.datetime_columns = datetime_columns
-        
+
     def set_target(self, target_columns):
         self.target_columns = target_columns
-        
+
     def classify_column_types(self):
         unique_threshold = 0.2  # Threshold for unique values to consider a column categorical
         word_count_threshold = 30  # Threshold for word count to distinguish between short and long text
-        
+
         for col in self.data.columns:
+            if col in self.target_columns:
+                continue
             sample_size = min(1000, len(self.data[col].dropna()))
             sample_data = self.data[col].dropna().sample(n=sample_size, random_state=42)
-            
+
             converted_sample = pd.to_datetime(sample_data, errors='coerce', format='%m %d, %Y')
             # If all sampled non-empty values can be parsed as datetime, consider the column as datetime
             if not converted_sample.isna().any():
@@ -51,7 +53,7 @@ class DataPrepare:
                     # Non-numeric columns parsed as datetime are added to datetime columns
                     self.datetime_columns.append(col)
                     continue
-                
+
             # For non-datetime columns, determine other types
             if self.data[col].dtype in ['int64', 'float64']:
                 # Determine if a numeric column is categorical based on unique values and threshold
@@ -78,12 +80,20 @@ class DataPrepare:
                         self.text_columns.append(col)  # Consider as short text for simplicity
                     else:
                         self.text_columns.append(col)  # Consider as long text for simplicity
-    
+        for col in self.categorical_columns:
+            self.data[col] = self.data[col].astype('category')
+        for col in self.numerical_columns:
+            self.data[col] = self.data[col].astype('float64')
 
-    def get_training_data(self, test_size, seed):
+    def split_train_and_test(self, test_size, seed):
         np.random.seed(seed)
-        data = self.data[self.text_columns + self.numerical_columns + self.categorical_columns + self.target_columns].dropna()
-        target = data.pop(self.target_columns[0])
-        train_data, test_data, train_labels, test_labels = train_test_split(
-            data, target, test_size=test_size, random_state=seed)
-        return train_data, test_data, train_labels, test_labels
+        data = self.data[self.text_columns + self.numerical_columns + self.categorical_columns +
+                         self.target_columns].dropna()
+        train_data, test_data = train_test_split(
+            data, test_size=test_size, random_state=seed)
+        return train_data, test_data
+
+    def split_feature_and_label(self, data):
+        new_data = data.copy().dropna()
+        target = new_data.pop(self.target_columns[0])
+        return new_data, target

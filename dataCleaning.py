@@ -102,6 +102,9 @@ def handle_missing_values(df, numerical_columns, categorical_columns, datetime_c
 
             else:
                 le = LabelEncoder()  # Encode labels for categorical target
+                is_series = isinstance(y_train, pd.Series)
+                if is_series:
+                    y_train = y_train.to_numpy()
                 encoded_y = le.fit_transform(y_train)
 
                 pipeline = Pipeline(steps=[
