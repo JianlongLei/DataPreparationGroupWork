@@ -1,0 +1,51 @@
+2024-04-04 20:17:08,183 - INFO - Started handling of duplicates...
+2024-04-04 20:17:08,190 - DEBUG - Deletion of 1368 duplicate(s) succeeded
+2024-04-04 20:17:08,190 - INFO - Handling of duplicates completed in 0.00706 seconds
+2024-04-04 20:17:08,192 - INFO - Started handling of outliers...
+2024-04-04 20:17:08,193 - INFO - Handling of outliers completed in 0.00000 seconds
+2024-04-04 20:17:08,194 - INFO - Started handling of missing values...
+2024-04-04 20:17:08,198 - INFO - Found a total of 11981 missing value(s)
+2024-04-04 20:17:08,199 - INFO - Processing missing values for column: image
+2024-04-04 20:17:08,200 - INFO - Imputed missing values for column: image
+2024-04-04 20:17:08,200 - INFO - Processing missing values for column: reviewText
+2024-04-04 20:17:08,201 - INFO - Imputed missing values for column: reviewText
+2024-04-04 20:17:08,231 - INFO - Processing missing values for column: vote
+2024-04-04 20:17:09,528 - INFO - Imputed missing values for column: vote
+2024-04-04 20:17:09,528 - INFO - Processing missing values for column: style
+2024-04-04 20:17:10,723 - INFO - Imputed missing values for column: style
+2024-04-04 20:17:10,724 - INFO - Processing missing values for column: reviewTime
+2024-04-04 20:18:14,088 - INFO - Imputed missing values for column: reviewTime
+2024-04-04 20:18:14,088 - INFO - Handling of missing values completed in 65.89382 seconds
+2024-04-04 20:18:14,094 - INFO - Started encoding of CATEGORICAL columns...
+2024-04-04 20:18:14,095 - DEBUG - OneHot Encoding succeeded for column "overall"
+2024-04-04 20:18:14,096 - DEBUG - OneHot Encoding succeeded for column "verified"
+2024-04-04 20:18:14,097 - DEBUG - Label Encoding succeeded for column "vote"
+2024-04-04 20:18:14,098 - DEBUG - Label Encoding succeeded for column "style"
+2024-04-04 20:18:14,098 - INFO - Completed encoding of CATEGORICAL columns in 0.00429 seconds
+2024-04-04 20:18:14,099 - INFO - Started conversion of DATETIME columns...
+2024-04-04 20:18:14,107 - DEBUG - Conversion to DATETIME succeeded for column "reviewTime"
+2024-04-04 20:18:14,110 - DEBUG - Conversion to DATETIME succeeded for column "unixReviewTime"
+2024-04-04 20:18:14,110 - INFO - Completed conversion of DATETIME columns in 0.01060 seconds
+2024-04-04 20:18:14,112 - INFO - Started extraction of features from TEXT columns...
+2024-04-04 20:18:14,112 - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2024-04-04 20:18:14,114 - DEBUG - Starting new HTTPS connection (1): huggingface.co:443
+2024-04-04 20:18:14,330 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json HTTP/1.1" 200 0
+2024-04-04 20:18:14,627 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json HTTP/1.1" 200 0
+2024-04-04 20:18:14,738 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md HTTP/1.1" 200 0
+2024-04-04 20:18:14,845 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json HTTP/1.1" 200 0
+2024-04-04 20:18:14,958 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json HTTP/1.1" 200 0
+2024-04-04 20:18:15,068 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json HTTP/1.1" 200 0
+2024-04-04 20:18:15,563 - DEBUG - https://huggingface.co:443 "HEAD /sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json HTTP/1.1" 200 0
+2024-04-04 20:18:15,848 - DEBUG - https://huggingface.co:443 "GET /api/models/sentence-transformers/all-MiniLM-L6-v2/revision/main HTTP/1.1" 200 19384
+2024-04-04 20:18:18,130 - INFO - Use pytorch device_name: cuda
+2024-04-04 20:18:22,418 - DEBUG - Feature extraction succeeded for column "reviewerID"
+2024-04-04 20:18:23,973 - DEBUG - Feature extraction succeeded for column "asin"
+2024-04-04 20:18:26,709 - DEBUG - Feature extraction succeeded for column "reviewerName"
+2024-04-04 20:18:28,351 - DEBUG - Feature extraction succeeded for column "summary"
+2024-04-04 20:18:30,039 - DEBUG - Feature extraction succeeded for column "image"
+2024-04-04 20:18:34,284 - DEBUG - Feature extraction succeeded for column "reviewText"
+2024-04-04 20:18:34,284 - INFO - Completed extraction of features from TEXT columns in 20.17249 seconds
+2024-04-04 20:18:34,514 - INFO - Started model training and evaluation...
+2024-04-04 20:19:14,099 - INFO - Final model:
+ RandomForestClassifier(n_estimators=200)
+2024-04-04 20:19:14,100 - INFO - Model training and evaluation completed in 39.58547 seconds

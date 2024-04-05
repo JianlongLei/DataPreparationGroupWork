@@ -1,10 +1,9 @@
-from dataCleaning import *
-from dataPreprocessing import *
+from algorithms.dataCleaning import *
+from algorithms.dataPreprocessing import *
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-from xgboost import XGBClassifier
 import logging
 import warnings
 import json
@@ -23,6 +22,7 @@ pd.set_option('display.width', 5000)
 with open("data/Amazon Product Reviews/Video_Games_5.json") as f:
     Video_Games = [json.loads(line) for line in f]
 df = pd.DataFrame(Video_Games)
+# df = pd.read_csv('data/Amazon Product Reviews/video_games.csv', sep=',')
 # X = df.copy()
 num_rows = df.shape[0] // 100
 X = df.iloc[:num_rows].copy()

@@ -1,6 +1,5 @@
 from abc import abstractmethod
-
-from dataCleaning import handle_duplicates, handle_missing_values, handle_outliers
+from algorithms.dataCleaning import handle_duplicates, handle_missing_values, handle_outliers
 
 
 class DataClean:

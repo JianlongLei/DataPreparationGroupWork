@@ -9,7 +9,7 @@ import pandas as pd
 
 from corruptions.missing_value import MissingValue
 from corruptions.replace_character import ReplaceCharacter
-from dataCorruption import insert_duplicates, introduce_nan, introduce_outliers
+from algorithms.dataCorruption import insert_duplicates, introduce_nan, introduce_outliers
 
 
 class CorruptionData:
