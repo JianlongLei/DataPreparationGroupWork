@@ -1,3 +1,5 @@
+import pandas as pd
+
 from main_steps.data_clean import DuplicatesCleaner, MissingValueCleaner, OutliersCleaner
 from main_steps.data_loader import DataLoader
 from main_steps.data_prepare import DataPrepare
@@ -213,12 +215,18 @@ if __name__ == '__main__':
     outlier_cleaner = OutliersCleaner(
         numerical_columns=data_prepare.numerical_columns)
 
+    final_results = []
+    result_columns = []
     # get accuracy list on original data by doing test for 20 times.
     before_clean = evaluate_before_corruption(4000, 20, data, target_column)
     print(before_clean)
+
+    final_results.append(before_clean)
+    result_columns.append('origin')
+
     # draw a boxplot with the result
     plt.boxplot(np.array(before_clean))
-    plt.title('Original Data')
+    plt.title(f'Target: {target_column}. Original Data')
     plt.ylabel('accuracy')
     plt.show()
 
@@ -230,8 +238,12 @@ if __name__ == '__main__':
     # get accuracy list on corrupted data by doing test for 20 times.
     after_corruption = evaluate_after_corruption(4000,20, data, target_column, corruptions)
     print(after_corruption)
+
+    final_results.append(after_corruption)
+    result_columns.append('corrupted')
+
     plt.boxplot(np.array(after_corruption))
-    plt.title('After Corruption')
+    plt.title(f'Target: {target_column}. After All Corruptions')
     plt.ylabel('accuracy')
     plt.show()
 
@@ -242,23 +254,154 @@ if __name__ == '__main__':
     # get accuracy list on corrupted data by doing test for 20 times.
     after_clean = evaluate_after_clean(4000,20, data, target_column, corruptions, cleaners)
     print(after_clean)
+
+    final_results.append(after_clean)
+    result_columns.append('cleaned')
+
     plt.boxplot(np.array(after_clean))
-    plt.title('After Cleaned')
+    plt.title(f'Target: {target_column}. After All Cleaners')
     plt.ylabel('accuracy')
     plt.show()
 
     # if you want to test on single corruption:
-    # corruptions.clear()
-    # corruptions.append(duplicat)
-    # single_corruption = evaluate_after_corruption(20, data, target_column, corruptions)
+    corruptions.clear()
+    corruptions.append(duplicat)
+    single_corruption = evaluate_after_corruption(4000, 20, data, target_column, corruptions)
+
+    final_results.append(single_corruption)
+    result_columns.append('duplicat')
+
+    plt.boxplot(np.array(single_corruption))
+    plt.title(f'Target: {target_column}. After Duplicate Corruption')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    corruptions.clear()
+    corruptions.append(introNan)
+    single_corruption = evaluate_after_corruption(4000, 20, data, target_column, corruptions)
+
+    final_results.append(single_corruption)
+    result_columns.append('introNan')
+
+    plt.boxplot(np.array(single_corruption))
+    plt.title(f'Target: {target_column}. After Missing Corruption')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    corruptions.clear()
+    corruptions.append(introOutlier)
+    single_corruption = evaluate_after_corruption(4000, 20, data, target_column, corruptions)
+
+    final_results.append(single_corruption)
+    result_columns.append('introOutlier')
+
+    plt.boxplot(np.array(single_corruption))
+    plt.title(f'Target: {target_column}. After Intro Outliers Corruption')
+    plt.ylabel('accuracy')
+    plt.show()
 
     # if you want to test on single cleaner:
-    # cleaners.clear()
-    # cleaners.append(duplicate_cleaner)
-    # single_clean = evaluate_after_corruption(20, data, target_column, corruptions, cleaners)
+    corruptions.clear()
+    corruptions.append(duplicat)
+    cleaners.clear()
+    cleaners.append(duplicate_cleaner)
+    single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
+
+    final_results.append(single_clean)
+    result_columns.append('duplicate_cleaner')
+
+    plt.boxplot(np.array(single_clean))
+    plt.title(f'Target: {target_column}. After Duplicate Cleaned')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    corruptions.clear()
+    corruptions.append(introNan)
+    cleaners.clear()
+    cleaners.append(missing_cleaner)
+    single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
+
+    final_results.append(single_clean)
+    result_columns.append('missing_cleaner')
+
+    plt.boxplot(np.array(single_clean))
+    plt.title(f'Target: {target_column}. After Missing Values Cleaned')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    corruptions.clear()
+    corruptions.append(introOutlier)
+    cleaners.clear()
+    cleaners.append(outlier_cleaner)
+    single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
+
+    final_results.append(single_clean)
+    result_columns.append('outlier_cleaner')
+
+    plt.boxplot(np.array(single_clean))
+    plt.title(f'Target: {target_column}. After Outliers Cleaned')
+    plt.ylabel('accuracy')
+    plt.show()
 
     # if you want to test cleaners on original data
-    # single_clean = evaluate_after_corruption(20, data, target_column, [], cleaners)
+    corruptions.clear()
+    cleaners.clear()
+    cleaners.append(duplicate_cleaner)
+    single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
 
+    final_results.append(single_clean)
+    result_columns.append('direct_duplicate_cleaner')
+
+    plt.boxplot(np.array(single_clean))
+    plt.title(f'Target: {target_column}. Directly Duplicate Cleaned')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    corruptions.clear()
+    cleaners.clear()
+    cleaners.append(missing_cleaner)
+    single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
+
+    final_results.append(single_clean)
+    result_columns.append('direct_missing_cleaner')
+
+    plt.boxplot(np.array(single_clean))
+    plt.title(f'Target: {target_column}. Directly Values Cleaned')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    corruptions.clear()
+    cleaners.clear()
+    cleaners.append(outlier_cleaner)
+    single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
+
+    final_results.append(single_clean)
+    result_columns.append('direct_outlier_cleaner')
+
+    plt.boxplot(np.array(single_clean))
+    plt.title(f'Target: {target_column}. Directly Outliers Cleaned')
+    plt.ylabel('accuracy')
+    plt.show()
+
+    fractions = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]
+    for i in fractions:
+        introNan = IntroNanCorruption(howto=CorruptionData(
+            column=[data_prepare.numerical_columns,
+                    data_prepare.categorical_columns,
+                    data_prepare.datetime_columns,
+                    data_prepare.text_columns],
+            fraction=i
+        ))
+        corruptions.clear()
+        corruptions.append(introNan)
+        cleaners.clear()
+        cleaners.append(missing_cleaner)
+        single_clean = evaluate_after_clean(4000, 20, data, target_column, corruptions, cleaners)
+        final_results.append(single_clean)
+        result_columns.append(f'missing_cleaner_{i}')
+
+    results_df = pd.DataFrame(final_results).T
+    results_df.columns = result_columns
+    print(final_results)
     # do a full test for one time.
-    (single_origin, single_corrupted, single_cleaned) = single_test(4000, data, target_column)
+    # (single_origin, single_corrupted, single_cleaned) = single_test(4000, data, target_column)
