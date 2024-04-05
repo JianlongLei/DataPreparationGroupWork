@@ -1,8 +1,8 @@
 from main_steps.data_clean import DuplicatesCleaner, MissingValueCleaner, OutliersCleaner
 from main_steps.data_loader import DataLoader
 from main_steps.data_prepare import DataPrepare
-from main_steps.data_corruption import  DuplicateCorruption, IntroNanCorruption, IntroOutliersCorruption, CorruptionData
-from main_steps.model_prepare import RandomForestModelPrepare
+from main_steps.data_corruption import DuplicateCorruption, IntroNanCorruption, IntroOutliersCorruption, CorruptionData
+from main_steps.model_prepare import RandomForestModelPrepare, NewModelPrepare
 from main_steps.model_evaluator import AccuracyEvaluator
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,22 +10,24 @@ import numpy as np
 
 # from main_steps.model_prepare import ModelPrepare
 
-def train_and_evaluate(train_data, test_data, train_labels, test_labels):
+def train_and_evaluate(total_data, train_data, test_data, train_labels, test_labels, target):
     # get a model pipline from the training data
-    model_preparation = RandomForestModelPrepare(
+    model_preparation = NewModelPrepare(
         train_data=train_data,
         train_labels=train_labels,
         test_data=test_data,
         test_labels=test_labels,
+        total_data=total_data,
         categorical_columns=data_prepare.categorical_columns,
         numerical_columns=data_prepare.numerical_columns,
+        datetime_columns=data_prepare.datetime_columns,
         text_columns=data_prepare.text_columns,
     )
     #
-    model = model_preparation.fit()
-    # #
-    evaluation = AccuracyEvaluator(model)
-    result = evaluation.evaluate(test_data, test_labels)
+    result = model_preparation.new_fit(target)
+    # # #
+    # evaluation = AccuracyEvaluator(model)
+    # result = evaluation.evaluate(test_data, test_labels)
     print(f"- Accuracy: {result:.4f}\n")
     return result
 
@@ -33,10 +35,10 @@ def train_and_evaluate(train_data, test_data, train_labels, test_labels):
 # do test for multiple times and return a list for accuracy.
 # The test will be done on original data.
 # The model is for predicting the target column
-def evaluate_before_corruption(test_time, origin_data, target_column):
+def evaluate_before_corruption(sample_size, test_time, origin_data, target_column):
     result_list = []
     for _ in range(test_time):
-        data = origin_data.sample(n=2000).copy()
+        data = origin_data.sample(n=sample_size).copy()
         data_prepare = DataPrepare(data, target_columns=[target_column])
         # data_prepare.classify_column_types()
         data_prepare.set_target(target_columns=[target_column])
@@ -44,7 +46,7 @@ def evaluate_before_corruption(test_time, origin_data, target_column):
         train_data, test_data = data_prepare.split_train_and_test(0.1, 1234)
         train_feature, train_label = data_prepare.split_feature_and_label(train_data)
         test_feature, test_label = data_prepare.split_feature_and_label(test_data)
-        single_result = train_and_evaluate(train_feature, test_feature, train_label, test_label)
+        single_result = train_and_evaluate(data, train_feature, test_feature, train_label, test_label, target_column)
         result_list.append(single_result)
     return result_list
 
@@ -52,10 +54,10 @@ def evaluate_before_corruption(test_time, origin_data, target_column):
 # do test for multiple times and return a list for accuracy.
 # The test will be done on corrupted data.
 # The model is for predicting the target column
-def evaluate_after_corruption(test_time, origin_data, target_column, corruptions):
+def evaluate_after_corruption(sample_size, test_time, origin_data, target_column, corruptions):
     result_list = []
     for _ in range(test_time):
-        data = origin_data.sample(n=2000).copy()
+        data = origin_data.sample(n=sample_size).copy()
         data_prepare = DataPrepare(data, target_columns=[target_column])
         # data_prepare.classify_column_types()
         data_prepare.set_target(target_columns=[target_column])
@@ -69,7 +71,7 @@ def evaluate_after_corruption(test_time, origin_data, target_column, corruptions
         test_feature, test_label = data_prepare.split_feature_and_label(test_data)
         # data_evaluator.setData(corrupted_data)
         # data_evaluator.doEvaluate()
-        single_result = train_and_evaluate(train_feature, test_feature, train_label, test_label)
+        single_result = train_and_evaluate(data, train_feature, test_feature, train_label, test_label, target_column)
         result_list.append(single_result)
     return result_list
 
@@ -78,10 +80,10 @@ def evaluate_after_corruption(test_time, origin_data, target_column, corruptions
 # The test will be done on cleaned data.
 # The model is for predicting the target column
 # NOTION: if corruptions are empty, then will do cleaners on original data.
-def evaluate_after_clean(test_time, origin_data, target_column, corruptions, cleaners):
+def evaluate_after_clean(sample_size, test_time, origin_data, target_column, corruptions, cleaners):
     result_list = []
     for _ in range(test_time):
-        data = origin_data.sample(n=2000).copy()
+        data = origin_data.sample(n=sample_size).copy()
         data_prepare = DataPrepare(data, target_columns=[target_column])
         # data_prepare.classify_column_types()
         data_prepare.set_target(target_columns=[target_column])
@@ -100,14 +102,14 @@ def evaluate_after_clean(test_time, origin_data, target_column, corruptions, cle
         test_feature, test_label = data_prepare.split_feature_and_label(test_data)
         # data_evaluator.setData(cleaned_data)
         # data_evaluator.doEvaluate()
-        single_result = train_and_evaluate(train_feature, test_feature, train_label, test_label)
+        single_result = train_and_evaluate(data, train_feature, test_feature, train_label, test_label, target_column)
         result_list.append(single_result)
     return result_list
 
 
-def single_test(origin_data, target_column):
+def single_test(sample_size, origin_data, target_column):
     print(origin_data.shape)
-    data = origin_data.sample(n=4000).copy()
+    data = origin_data.sample(n=sample_size).copy()
 
     columns_str = ', '.join(data.columns)
     print(f"The DataFrame contains the following columns:\n{columns_str}.")
@@ -124,7 +126,7 @@ def single_test(origin_data, target_column):
     print("====================Before corruption=====================")
     # data_evaluator = TFDVEValuator()
     # data_evaluator.doEvaluate(train_data)
-    result_on_origin = train_and_evaluate(train_feature, test_feature, train_label, test_label)
+    result_on_origin = train_and_evaluate(data, train_feature, test_feature, train_label, test_label, target_column)
 
     # do corruptions
     corruptions = []
@@ -152,7 +154,7 @@ def single_test(origin_data, target_column):
     train_feature, train_label = data_prepare.split_feature_and_label(corrupted_data)
     test_feature, test_label = data_prepare.split_feature_and_label(test_data)
     # data_evaluator.doEvaluate(corrupted_data)
-    result_on_corrupted = train_and_evaluate(train_feature, test_feature, train_label, test_label)
+    result_on_corrupted = train_and_evaluate(data, train_feature, test_feature, train_label, test_label, target_column)
 
     # clean data
     cleaners = []
@@ -176,7 +178,7 @@ def single_test(origin_data, target_column):
     train_feature, train_label = data_prepare.split_feature_and_label(cleaned_data)
     test_feature, test_label = data_prepare.split_feature_and_label(test_data)
     # data_evaluator.doEvaluate(cleaned_data)
-    result_on_cleaned = train_and_evaluate(train_feature, test_feature, train_label, test_label)
+    result_on_cleaned = train_and_evaluate(data, train_feature, test_feature, train_label, test_label, target_column)
     return result_on_origin, result_on_corrupted, result_on_cleaned
 
 
@@ -186,7 +188,7 @@ if __name__ == '__main__':
     # loader = DataLoader('data/Amazon Product Reviews/video_games.csv')
     data = loader.get_data()
     # analysis the data structure
-    target_column = 'overall'
+    target_column = 'verified'
     data_prepare = DataPrepare(data.sample(n=500), target_columns=[target_column])
 
     # all corruptions
@@ -212,7 +214,7 @@ if __name__ == '__main__':
         numerical_columns=data_prepare.numerical_columns)
 
     # get accuracy list on original data by doing test for 20 times.
-    before_clean = evaluate_before_corruption(20, data, target_column)
+    before_clean = evaluate_before_corruption(4000, 20, data, target_column)
     print(before_clean)
     # draw a boxplot with the result
     plt.boxplot(np.array(before_clean))
@@ -226,7 +228,7 @@ if __name__ == '__main__':
     corruptions.append(introOutlier)
 
     # get accuracy list on corrupted data by doing test for 20 times.
-    after_corruption = evaluate_after_corruption(20, data, target_column, corruptions)
+    after_corruption = evaluate_after_corruption(4000,20, data, target_column, corruptions)
     print(after_corruption)
     plt.boxplot(np.array(after_corruption))
     plt.title('After Corruption')
@@ -238,7 +240,7 @@ if __name__ == '__main__':
     cleaners.append(missing_cleaner)
     cleaners.append(outlier_cleaner)
     # get accuracy list on corrupted data by doing test for 20 times.
-    after_clean = evaluate_after_clean(10, data, target_column, corruptions, cleaners)
+    after_clean = evaluate_after_clean(4000,20, data, target_column, corruptions, cleaners)
     print(after_clean)
     plt.boxplot(np.array(after_clean))
     plt.title('After Cleaned')
@@ -259,4 +261,4 @@ if __name__ == '__main__':
     # single_clean = evaluate_after_corruption(20, data, target_column, [], cleaners)
 
     # do a full test for one time.
-    (single_origin, single_corrupted, single_cleaned) = single_test(data, target_column)
+    (single_origin, single_corrupted, single_cleaned) = single_test(4000, data, target_column)

@@ -25,7 +25,8 @@ df = pd.DataFrame(Video_Games)
 # df = pd.read_csv('data/Amazon Product Reviews/video_games.csv', sep=',')
 # X = df.copy()
 num_rows = df.shape[0] // 100
-X = df.iloc[:num_rows].copy()
+# X = df.iloc[:num_rows].copy()
+X = df.sample(frac=0.01)
 print("Original data:\n", X.tail(10), "\n")
 
 
@@ -221,6 +222,7 @@ print("Data used for modeling:\n", modeling_df.tail(10), "\n")
 logger.info('Started model training and evaluation...')
 start_time = timer()
 selected_col = np.random.choice(categorical_columns) if categorical_columns else None
+selected_col = 'verified'
 if selected_col is not None:
     print("Selected column for classification: ", selected_col, "\n")
 
