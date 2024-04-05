@@ -106,7 +106,7 @@ class NewModelPrepare(ModelPrepare):
         return super().get_params(transformers)
 
     def new_fit(self, selected_col):
-        print("Selected column for classification: ", selected_col, "\n")
+        # print("Selected column for classification: ", selected_col, "\n")
 
         categorical_features_df = encode_categorical(self.total_data, self.categorical_columns)
         datetime_features_df = convert_datetime(self.total_data, self.datetime_columns)
@@ -153,11 +153,12 @@ class NewModelPrepare(ModelPrepare):
         y_pred = le.inverse_transform(y_pred)  # Decode the predictions
 
         # Calculate the accuracy
-        accuracy = accuracy_score(y_test, y_pred)
+        # accuracy = accuracy_score(y_test, y_pred)
+        accuracy = grid_search.best_score_
 
         # Print out the results
-        print("Test data accuracy: ", accuracy)
-        print("Best parameters found: ", grid_search.best_params_)
-        print("Best accuracy found: ", grid_search.best_score_)
-        print("Average accuracy: ", grid_search.cv_results_['mean_test_score'].mean())
+        # print("Test data accuracy: ", accuracy)
+        # print("Best parameters found: ", grid_search.best_params_)
+        # print("Best accuracy found: ", grid_search.best_score_)
+        # print("Average accuracy: ", grid_search.cv_results_['mean_test_score'].mean())
         return accuracy

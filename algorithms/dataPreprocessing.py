@@ -120,7 +120,8 @@ def extract_text_features(df, text_columns):
 
             logger.debug(f'Feature extraction succeeded for column "{col}"')
         except:
-            logger.warning(f'Feature extraction failed for column "{col}"')
+            logger.info(f'ERROR: Feature extraction failed for column "{col}"')
+            # logger.warning(f'Feature extraction failed for column "{col}"')
 
     end_time = timer()
     logger.info(f'Completed extraction of features from TEXT columns in {end_time - start_time:.5f} seconds')
