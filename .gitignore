@@ -9,3 +9,4 @@ main_steps/test.ipynb
 *.pyc
 .venv
 
+.DS_Store
